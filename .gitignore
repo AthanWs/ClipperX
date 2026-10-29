@@ -64,3 +64,6 @@ Thumbs.db
 
 # Small approved, self-generated SFX used by the renderer and tests
 !assets/sfx/*.wav
+
+# Lock file created by scripts/setup_nvidia_speech.ps1
+.nvidia-speech-setup.lock
