@@ -1,0 +1,36 @@
+Copyright (c) 2026 AthanWs. All rights reserved.
+
+PROPRIETARY LICENSE
+
+This repository and all of its contents, including source code, documentation,
+images, audio and other assets (the "Software"), are the proprietary property
+of the copyright holder.
+
+The Software is made publicly visible for evaluation purposes only. You may view
+and read the Software, and evaluate it to assess the author's work.
+
+Without prior written permission from the copyright holder, you may NOT:
+
+  1. copy, reproduce, modify, adapt or create derivative works of the Software;
+  2. distribute, publish, sublicense, sell, rent or lease the Software or any
+     portion of it;
+  3. use the Software, in whole or in part, in any commercial or production
+     setting, product or service;
+  4. use the Software or its contents to train, fine-tune or evaluate machine
+     learning models.
+
+Publishing this repository on a public platform does not grant any license or
+right beyond viewing it there, except rights that the platform's terms of
+service require.
+
+Third-party components (models, FFmpeg, Python packages and other dependencies)
+are not part of the Software. They are obtained separately and remain under
+their own licenses. Third-party trademarks, such as the Kick logo included in
+the branding image, belong to their respective owners.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES
+OR OTHER LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE.
+
+For permission requests, contact the copyright holder through
+https://github.com/AthanWs.

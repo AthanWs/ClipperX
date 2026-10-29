@@ -61,3 +61,6 @@ Thumbs.db
 .DS_Store
 .vscode/
 .idea/
+
+# Small approved, self-generated SFX used by the renderer and tests
+!assets/sfx/*.wav

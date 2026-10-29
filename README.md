@@ -1,70 +1,86 @@
 # ClipperX
 
-**ClipperX turns long livestream VODs into short vertical clips, edited the way a human clip editor would do it.**
+**Turn multi-hour livestream VODs into vertical, captioned, ready-to-post short clips, on your own GPU.**
 
-You give it a 16:9 recording of a Twitch/Kick stream (30 minutes to 10 hours, one mixed audio track). ClipperX transcribes it, finds the moments that stand on their own (jokes, reactions, unexpected events, debates), keeps the setup and the payoff, and renders 9:16 clips of up to 179 seconds. Each clip gets an adaptive camera/content layout, word-timed captions, a title and persistent creator branding.
+![Before: a 16:9 livestream frame. After: the same moment as a 9:16 clip with branding, captions and a reframed camera](docs/media/before-after.jpg)
 
-Everything heavy runs locally on a single consumer GPU (developed on an RTX 3060 12 GB, Windows 11). The only remote part is an optional, configurable LLM provider for editorial and visual decisions.
+<sub>Frame from one of my own streams. Faces and other players' names are blurred. The right side is real output of the current compatibility renderer, an earlier iteration: the adaptive v2 layout is still in progress (see <a href="#project-status">Project status</a>).</sub>
 
-> Built and maintained with [Claude Code](https://claude.com/claude-code).
+## Why
 
----
+Streamers grow on TikTok, YouTube Shorts and Reels, but turning a 6-hour stream into good clips is slow manual work:
 
-## How it works
+- watching the whole VOD to find the moments;
+- trimming without losing the setup or the payoff;
+- reframing 16:9 into 9:16;
+- timing captions word by word;
+- adding a title and branding.
 
+The tools that already exist mostly cut fixed-length windows around loud audio or chat spikes. ClipperX tries to **understand what actually happened** and then edit the clip the way a human clip editor would.
+
+## Features
+
+- **Long-form input.** Built for 30-minute to 10-hour VODs with a single mixed audio track. Every stage is cached and resumable.
+- **Local speech stack.** NVIDIA Parakeet ASR with native word timestamps. Optional Nemotron speaker diarization and voiceprint matching for the streamer.
+- **Local visual index.** Sparse sampling plus dense probes around scene changes. Face and webcam tracking (YuNet + SFace) with explicit `confident` / `ambiguous` / `unavailable` states.
+- **LLM editorial planner.** Token-budgeted batches, candidate discovery, evidence requests (frames and audio around a moment), and boundary review that can split, merge or extend clips. In coverage mode it returns every moment it can justify, not a fixed quota. Clips are capped at 179 s.
+- **LLM visual director.** Chooses a layout per shot (camera, content, split, full-cam), crops, title, captions, branding and optional SFX cues. A creator gate refuses to publish a clip that is missing branding or captions.
+- **FFmpeg renderer.** 1080x1920 H.264/AAC output, word-timed ASS captions, overlays and audio checks. Each clip comes with a `.metadata.json`.
+- **Strict contracts and safety rails.** Every model decision is a Pydantic-validated JSON schema. There are no silent fallbacks, and no inference is sent without `--confirm-inference` and hard token and call limits.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A[Long VOD<br/>16:9, mixed audio] --> B[Local index<br/>visual + audio features]
+    A --> C[ASR<br/>Parakeet TDT 0.6B v3]
+    C --> D[Speaker diarization<br/>Nemotron, optional]
+    B --> E
+    D --> E[Editorial planner<br/>LLM: discover, gather evidence,<br/>review boundaries, compose]
+    E --> F[Visual director<br/>LLM: layout, crops, title,<br/>captions, brand, SFX]
+    B --> F
+    F --> G[Render<br/>FFmpeg + ASS captions + SFX]
+    G --> H[9:16 clips<br/>.mp4 + .metadata.json]
 ```
-VOD (16:9, mixed audio)
-  │
-  ├─ 1. Local indexing ─────────── sparse visual sampling + dense probes around changes,
-  │                                face/webcam tracking (YuNet + SFace), audio energy/silence
-  ├─ 2. Speech ─────────────────── ASR: NVIDIA Parakeet TDT 0.6B v3 (multilingual, native word timestamps)
-  │                                Diarization: NVIDIA Nemotron (optional), voiceprint matching for the streamer
-  ├─ 3. Editorial planner (LLM) ── token-budgeted transcript batches → candidate discovery →
-  │                                evidence requests (frames/audio before, inside, after) →
-  │                                boundary review (split / merge / extend) → global composition
-  ├─ 4. Visual director (LLM) ──── per-shot layout (camera / content / split / full-cam), crops,
-  │                                motivated zooms, title, captions, brand, optional SFX cues
-  └─ 5. Render (FFmpeg) ────────── H.264/AAC 1080x1920, ASS captions, overlays, audio checks
-                                   → clip.mp4 + clip.metadata.json
-```
 
-Design principles that run through the codebase:
+Deterministic stages (indexing, ASR, geometry, render) are cached per VOD fingerprint. The LLM stages only return structured decisions, and the host validates them before anything is rendered. Cursors, receipts, token usage and decisions are persisted, so an interrupted run resumes without paying for the same model calls twice.
 
-- **Deterministic evidence, model decisions.** Indexing, ASR, geometry and rendering are deterministic and cached. The LLM only makes editorial and visual choices, and returns **strict JSON schemas** (Pydantic) that the host validates before anything is rendered.
-- **Resumable and auditable.** Every stage persists cursors, receipts, fingerprints, token usage and decisions under a per-VOD job directory, so a 10-hour stream can be resumed after an interruption without paying for model calls twice.
-- **No silent fallbacks.** If a backend, model asset or validation fails, the run stops with an explicit status (`review_required`, `partial`, `error`). It does not quietly degrade to a worse path or invent transcripts, identities or approvals.
-- **Safe-zone aware layouts.** The director must keep faces, HUD and important regions visible and respect mobile UI margins. Overlays may only use space that is actually free.
+## Tech stack
 
-### Main modules (`clipperx/`)
-
-| Area | Modules |
+| Area | Tools |
 |---|---|
-| Jobs & evidence | `jobs.py`, `timeline.py`, `visual_timeline*.py`, `audio_features.py`, `evidence.py` |
-| Speech | `parakeet.py`, `parakeet_worker.py`, `diarization.py`, `nemotron_worker.py`, `voiceprint.py`, `speaker_identity.py` |
-| Editorial planner | `context_budget.py`, `planner_contracts.py`, `planner_prompts.py`, `planning_state.py`, `planner_engine.py`, `composition_groups.py` |
-| Visual director | `visual_contracts.py`, `visual_prompts.py`, `visual_director.py`, `style_library.py` |
-| Render & export | `render_*.py`, `editing.py`, `subtitles.py`, `overlay_ass.py`, `export_pipeline.py`, `sfx_authority.py` |
-| Orchestration | `autonomous_pipeline.py`, `structured_client.py`, `cli.py`, `interface.py` |
+| Language | Python 3.12 (Windows 11, CUDA) |
+| Speech | NVIDIA Parakeet TDT 0.6B v3, NVIDIA Nemotron diarization, WhisperX / pyannote (optional legacy backends) |
+| Vision | OpenCV (YuNet face detection, SFace identity), MediaPipe |
+| LLM | Any OpenAI-compatible API with JSON-schema output and image input (hosted or local, e.g. Ollama) |
+| Contracts | Pydantic v2, tiktoken for context budgeting |
+| Media | FFmpeg (H.264 NVENC or libx264, AAC), ASS subtitles |
+| CLI / UI | Typer, Rich, Textual |
+| Tests | pytest |
 
-The `clipperx/tests/` suite (pytest) uses real files, ledgers and schemas, and fakes only the external model boundary.
-
-## Install
+## Quickstart
 
 Requirements: Windows 10/11, Python 3.12, an NVIDIA GPU with CUDA, and FFmpeg on `PATH`.
 
 ```powershell
+git clone https://github.com/AthanWs/ClipperX.git
+cd ClipperX
+
 # Main environment (render, indexing, planner)
 powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1
-
-# Local speech stack (Parakeet ASR + Nemotron diarization), in its own environment
+# Local speech stack (Parakeet + Nemotron) in its own environment
 powershell -ExecutionPolicy Bypass -File scripts\setup_nvidia_speech.ps1 -DownloadModels
 
 Copy-Item .env.example .env
+$py = ".\.venv-whisperx\Scripts\python.exe"
+
+& $py -m clipperx.cli doctor                         # check the local runtime (no LLM)
+& $py -m clipperx.cli setup-face-models              # one-time download of YuNet/SFace
+& $py -m clipperx.cli index-visual VOD.mp4           # local visual index (no LLM)
+& $py -m clipperx.cli transcribe VOD.mp4             # local ASR with word timestamps
 ```
 
-### LLM provider
-
-The LLM is **disabled by default** (`LLM_PROVIDER=disabled`). Indexing, transcription and the compatibility renderer work without it. To enable the planner and the director, point `.env` at any **OpenAI-compatible API** (hosted or local) whose model supports JSON-schema output and image input:
+To run the full workflow (planner → director → export), set an OpenAI-compatible provider in `.env`:
 
 ```ini
 LLM_PROVIDER=openai_compatible
@@ -73,66 +89,71 @@ OPENAI_API_KEY=...
 OPENAI_MODEL=your-model-name
 ```
 
-No inference is ever sent without the explicit `--confirm-inference` flag. Every run has hard limits on calls, images and tokens.
-
-## Usage
+Then run it:
 
 ```powershell
-$py = ".\.venv-whisperx\Scripts\python.exe"
-
-# Environment check
-& $py -m clipperx.cli doctor
-
-# Local, model-free steps
-& $py -m clipperx.cli index-visual VOD.mp4
-& $py -m clipperx.cli transcribe VOD.mp4
-& $py -m clipperx.cli diarize VOD.mp4
-
-# Full resumable workflow: prepare → editorial plan → visual plan → export
-& $py -m clipperx.cli auto-edit VOD.mp4 --output-dir data\clips `
-    --model your-model-name --context-window 65536 --encoder libx264 --confirm-inference
-
-# Desktop UI
-.\run_clipperx.bat
+& $py -m clipperx.cli auto-edit VOD.mp4 --output-dir out\clips `
+    --model your-model-name --encoder libx264 --confirm-inference
 ```
 
-Run the tests:
+`python -m clipperx.cli --help` lists all commands, including step-by-step ones such as `prepare-batches`, `plan-visual` and `render-visual-plan`.
+
+## Testing
+
+The repo has **3,897 pytest tests in 88 files**. They use real files, ledgers and Pydantic schemas, and fake only the external model boundary.
 
 ```powershell
 .\.venv-whisperx\Scripts\python.exe -m pytest clipperx/tests -q
 ```
 
-## Status (honest)
+On a fresh clone, 3,582 pass, 8 are skipped and the remaining ~300 fail or error. Most of those depend on machine-local assets that are not committed:
 
-ClipperX is an **active work in progress**, not a finished product.
+- a pinned FFmpeg build under `data/tools/`;
+- validation fixtures under `data/`;
+- internal design records.
 
-**Working and tested:**
-- Local visual and audio indexing with face/webcam identity and explicit uncertainty states (`confident` / `ambiguous` / `unavailable`).
-- Parakeet ASR with native word timestamps and chunked long-form processing; optional Nemotron diarization.
-- Staged editorial planner with resumable ledgers, evidence requests, boundary review and coverage mode (all justified moments, not a fixed quota).
-- Visual director contracts and a "creator" publication gate: brand on every shot, title on the first shot, captions wherever speech exists.
-- Resumable per-clip export coordinator. Compatibility renderer with styled captions and branding.
+Making the suite fully self-contained is on the roadmap.
 
-**Not yet proven:**
-- End-to-end autonomous editing of a full multi-hour VOD with the chosen model.
-- Editorial quality at scale (highlight precision, natural cuts) beyond bounded real-model samples.
-- The v2 director placing overlays in genuinely free regions on every layout. 60 FPS native v2 render on real footage.
+## Project status
+
+ClipperX is an **active work in progress**.
+
+**Working (implemented and covered by tests):**
+- Local visual and audio indexing, face/webcam identity with explicit uncertainty.
+- Parakeet ASR with chunked long-form processing and native word timestamps; optional Nemotron diarization.
+- Staged editorial planner with resumable ledgers, evidence requests, boundary review and coverage mode.
+- Visual director contracts and creator publication gate; resumable per-clip export coordinator.
+- Compatibility renderer with styled captions and branding (shown in the demo above).
+
+**In progress / not yet proven:**
+- End-to-end autonomous editing of a full multi-hour VOD with real model calls. So far only bounded real-model samples have been run.
+- The v2 director reliably placing overlays in genuinely free regions on every layout, and native 60 FPS v2 rendering.
+- Measured editorial quality at scale: highlight precision, natural cuts, false positives.
 
 ## Roadmap
 
-1. Real end-to-end run on full VODs; human review loop feeding fixes back into prompts and validators.
-2. Title and on-screen text styles learned from real short-form clip conventions (hooks, quotes, reaction framing).
-3. Motivated zooms, punch-ins and sound design driven by detected events, not periodic effects.
-4. Replace the legacy pipeline in the UI with the new autonomous workflow.
-5. Synchronized chat as an additional signal once new streams are recorded.
-6. Evaluate newer local speech models (e.g. larger multitalker ASR) as consumer-GPU builds become available.
+1. **End-to-end runs on real VODs** with a human review loop feeding fixes back into prompts and validators.
+2. **Human-style finishing:** motivated zooms and punch-ins, event-driven sound design, and better use of empty space in the 9:16 frame.
+3. **Titles and on-screen text** modeled on real short-form clip conventions: hooks, quotes, reaction framing.
+4. **Self-contained test suite** (small committed fixtures, FFmpeg discovered from `PATH`).
+5. **UI** switched from the legacy pipeline to the new autonomous workflow.
+6. **Synchronized chat** as an extra signal, and newer local speech models as consumer-GPU builds appear.
 
-### Research notes
+**Research note:** `tools/` contains a closed experiment that used Meta's TRIBE v2 brain-encoding model to predict engagement. The first batch looked promising (ρ ≈ 0.54, n = 21) but **did not replicate** on fresh, pre-registered data (ρ ≈ 0.10, n = 36), so it was not integrated.
 
-`tools/` contains a closed experiment that used Meta's TRIBE v2 brain-encoding model to predict audience engagement from clips. A promising first batch (ρ≈0.54, n=21) **did not replicate** on fresh pre-registered data (ρ≈0.10, n=36), so it was not integrated. The model is not redistributed here.
+## Built with Claude Code
+
+ClipperX is developed with [Claude Code](https://claude.com/claude-code) as a day-to-day engineering partner:
+
+- **Planning.** Features start as written specs and implementation plans: [`docs/superpowers/specs`](docs/superpowers/specs) and [`docs/superpowers/plans`](docs/superpowers/plans).
+- **Implementation.** Small, scoped tasks with explicit file ownership. The work is test-first: a failing test, then the fix, then a focused regression run.
+- **Testing and verification.** Claude Code runs the suites, renders real samples and inspects output frames and audio before a change counts as done. Results are recorded honestly as implemented, tested without a model, or validated with the model.
+- **Review.** Independent review passes over each change set (diffs, edge cases, contract drift) before it is accepted.
+
+## License
+
+Proprietary — All rights reserved. Source code is visible for evaluation purposes only. See [LICENSE](LICENSE).
 
 ---
 
-## Resumen en español
-
-ClipperX convierte directos largos (16:9, una pista de audio) en clips verticales 9:16 de hasta 179 s, editados como lo haría una persona. Indexa el vídeo de forma local, transcribe con Parakeet y diariza con Nemotron. Después, un planner editorial con LLM encuentra los momentos con contexto y desenlace, y un director visual decide la composición, los acercamientos, el título, los subtítulos y la marca. El render se hace con FFmpeg. Todo es reanudable y auditable, con contratos JSON estrictos y sin fallbacks silenciosos. Es un proyecto en desarrollo activo, hecho con Claude Code.
+<sub>**Resumen en español:** ClipperX convierte directos largos en clips verticales listos para publicar. Usa ASR y diarización locales, un planner editorial con LLM y un director visual, y renderiza con FFmpeg. Es un proyecto en desarrollo activo, hecho con Claude Code.</sub>
