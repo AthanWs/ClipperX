@@ -103,6 +103,26 @@ Then run it:
 
 `python -m clipperx.cli --help` lists all commands, including step-by-step ones such as `prepare-batches`, `plan-visual` and `render-visual-plan`.
 
+## Troubleshooting
+
+Start with `.\.venv-whisperx\Scripts\python.exe -m clipperx.cli doctor` (add `--json` for details). It runs no model and lists every failing check.
+
+| Symptom | Likely cause and fix |
+|---|---|
+| `running scripts is disabled on this system` | PowerShell execution policy. Run the scripts as shown above, with `powershell -ExecutionPolicy Bypass -File ...`. |
+| `setup_env.ps1` fails on `python -m venv`, or creates an environment with the wrong Python | The script uses whichever `python` is first on `PATH`. Create the environment yourself with the right version (`py -3.12 -m venv .venv-whisperx`) and run the script again; it reuses an existing `.venv-whisperx`. |
+| `doctor` reports `ffmpeg` / `ffprobe` as failed | FFmpeg is not on `PATH`. Install a full build (for example `winget install Gyan.FFmpeg`), open a **new** terminal and check `ffmpeg -version` and `ffprobe -version`. |
+| `doctor` reports `cuda` with `available=False` | A CPU-only Torch wheel was installed, or the NVIDIA driver is too old for CUDA 12.4. Check `nvidia-smi`, update the driver, then re-run `scripts\setup_env.ps1` (it force-reinstalls the `cu124` wheels at the end). |
+| `doctor` reports an `opencv distribution` conflict | Both `opencv-python` and `opencv-contrib-python` are installed. Run `.\.venv-whisperx\Scripts\python.exe -m pip uninstall -y opencv-python` and keep only the contrib package. |
+| `h264_nvenc` not available | Your FFmpeg build or GPU has no NVENC. Pass `--encoder libx264` to `auto-edit`. |
+| `setup_nvidia_speech.ps1`: `Runtime creation failed` | `.venv-whisperx` does not exist yet. Run `scripts\setup_env.ps1` first. |
+| `setup_nvidia_speech.ps1`: `NVIDIA speech runtime CUDA preflight failed` | Torch in `.venv-nvidia-speech` cannot see the GPU. Same fix as the `cuda` check above; delete `.venv-nvidia-speech` and run the script again. |
+| `setup_nvidia_speech.ps1` fails opening `.nvidia-speech-setup.lock` | Another run of the script is still active. Wait for it or close it, then retry. |
+| `Faltan o son inválidos los modelos faciales` / `El manifest facial está ausente` | Face models are missing or unverified. Set `ALLOW_MODEL_DOWNLOADS=true` in `.env` and run `python -m clipperx.cli setup-face-models`. |
+| `Falta el runtime aislado de Community-1` | `DIARIZATION_BACKEND=pyannote` is set but `.venv-diarization` is missing. Run `scripts\setup_diarization_env.ps1`, or switch back to `DIARIZATION_BACKEND=nemotron`. |
+| `Configura LLM_PROVIDER antes de confirmar inferencia` | `LLM_PROVIDER=disabled` in `.env`. Set an OpenAI-compatible provider as shown in [Quickstart](#quickstart). |
+| `Falta --confirm-inference` | Commands that call the model require the explicit `--confirm-inference` flag. |
+
 ## Testing
 
 The repo has **3,897 pytest tests in 88 files**. They use real files, ledgers and Pydantic schemas, and fake only the external model boundary.
