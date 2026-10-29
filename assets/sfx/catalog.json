@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "asset_id": "whoosh_sa3_softgate_01",
+      "family": "whoosh",
+      "path": "whoosh_sa3_softgate_01.wav",
+      "sha256": "595ee7906f6a25822a7fb2267201dfd16c887327db58fd6043b66dc76f112097",
+      "sample_rate": 48000,
+      "channels": 2,
+      "frames": 25440,
+      "transient_sample": 7896,
+      "default_gain_db": -18,
+      "approval": {
+        "status": "approved",
+        "reference": "user_reply:call_0431f6ef8b7143c1a90a682015ca3b72:0"
+      },
+      "provenance": {
+        "approval_quote": "Sí, usarla suavemente",
+        "approval_scope": "Only this B file; soft optional use, not master or A",
+        "source_candidate": "data/sfx_candidates/sa3_cpu_probe_01/derived/whoosh_sa3_softgate_01.wav",
+        "master_sha256": "3abe4e354f06e042c095ad986503a4e5c68a5b97d78fdec37b1427aaefd39437",
+        "code_revision": "77e0398c26f7d22d801ec1bb036307e8b231f741",
+        "weight_revision": "08b17423649b5714b22eab20f96bf00751f2358a",
+        "seed": 101,
+        "source_start_frame": 18522,
+        "source_end_frame_exclusive": 41895,
+        "normalization_applied": false,
+        "agent_listened": false,
+        "human_approved": true,
+        "preparation_receipt": "data/sfx_candidates/sa3_cpu_probe_01/derivative-receipt.json"
+      }
+    }
+  ]
+}

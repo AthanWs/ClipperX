@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=68,<81", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "clipperx"
+version = "0.1.0"
+description = "Automated livestream clipper with transcript-driven editing"
+authors = [{ name = "ClipperX" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "setuptools>=68,<81",
+  "pydantic>=2.4",
+  "pydantic-settings>=2.2",
+  "python-dotenv>=1.0",
+  "typer>=0.12",
+  "rich>=13.7",
+  "ffmpeg-python>=0.2",
+  "moviepy>=1.0.3",
+  "opencv-contrib-python>=4.10,<5",
+  "mediapipe>=0.10,<1",
+  "numpy>=1.26,<2.5",
+  "pillow>=9.2,<12",
+  "fonttools>=4.63,<5",
+  "protobuf>=5,<7",
+  "scipy>=1.11",
+  "soundfile>=0.12",
+  "librosa>=0.10",
+  "tqdm>=4.66",
+  "sentence-transformers>=3.4,<4",
+  "transformers>=4.48,<5",
+  "scikit-learn>=1.4",
+  "nltk>=3.9",
+  "torch==2.6.0",
+  "torchaudio==2.6.0",
+  "torchvision==0.21.0",
+  "ctranslate2>=4.0,<4.5",
+  "faster-whisper>=1.0,<2",
+  "whisperx==3.4.2",
+  "pyannote.audio==3.3.2",
+  "requests>=2.31",
+  "yt-dlp>=2024.1",
+  "httpx>=0.27",
+  "textual>=0.60",
+  "tiktoken>=0.7,<1",
+]
+
+
+[project.optional-dependencies]
+google = ["google-genai>=1.0"]
+anthropic = ["anthropic>=0.40"]
+all-llm = ["google-genai>=1.0", "anthropic>=0.40"]
+dev = [
+  "mypy>=1.10",
+  "ruff>=0.5",
+  "pytest>=8.1",
+  "pytest-asyncio>=0.23",
+  "pytest-cov>=4.1",
+  "pre-commit>=3.7",
+]
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["clipperx*"]
+exclude = ["clipperx.tests*"]
+
+
+[tool.pytest.ini_options]
+testpaths = ["clipperx/tests"]
+addopts = "-ra"
+
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+strict_optional = true
+no_implicit_optional = true
+
+

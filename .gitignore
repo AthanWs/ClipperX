@@ -1,0 +1,63 @@
+# Python build and cache artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Virtual environments (one per runtime: render, ASR, diarization, TRIBE, ...)
+.venv/
+.venv-*/
+venv/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.local.json
+
+# Machine-local data: VODs, transcripts, caches, downloaded models, renders, runs
+data/
+logs/
+external/
+.clipperx-transactions/
+
+# Agent working state and local review ledgers
+.superpowers/
+.agents/
+.codex/
+.claude/
+
+# Media and heavy binaries
+*.mp4
+*.mkv
+*.mov
+*.webm
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.npy
+*.onnx
+*.safetensors
+*.pt
+*.ckpt
+*.nemo
+*.gguf
+
+# Debug output
+debug_output*.txt
+ffmpeg_error.log
+*.log
+
+# Internal agent briefing (references a local model proxy)
+PROMPT_GESTOR.md
+
+# OS / editor
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
