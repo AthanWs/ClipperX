@@ -1,5 +1,7 @@
 # Setup Windows para ClipperX
 
+> **Nota:** esta guía es histórica (Conda, Python 3.10, CUDA 12.1) y ya no coincide con los scripts del repositorio. Para instalar ClipperX usa la sección [Quickstart](../README.md#quickstart) del README, que se basa en `scripts\setup_env.ps1` (Python 3.12, `.venv-whisperx`, Torch CUDA 12.4) y `scripts\setup_nvidia_speech.ps1`. Los problemas habituales están en [Troubleshooting](../README.md#troubleshooting).
+
 ## 1. Prerrequisitos de Hardware
 - GPU: NVIDIA RTX 3060 (12 GB VRAM)
 - CPU: Ryzen 5 3600 (6 núcleos, 12 hilos)
