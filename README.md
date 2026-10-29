@@ -60,21 +60,26 @@ Deterministic stages (indexing, ASR, geometry, render) are cached per VOD finger
 
 ## Quickstart
 
-Requirements: Windows 10/11, Python 3.12, an NVIDIA GPU with CUDA, and FFmpeg on `PATH`.
+Requirements: Windows 10/11, Python 3.12 (`python` on `PATH`; 3.11 is the minimum for the model-download script), an NVIDIA GPU with a CUDA 12.4-capable driver, and FFmpeg (`ffmpeg` and `ffprobe`) on `PATH`.
+
+Run the setup scripts in this order: the speech environment is created from the main one.
 
 ```powershell
 git clone https://github.com/AthanWs/ClipperX.git
 cd ClipperX
 
-# Main environment (render, indexing, planner)
+# Main environment .venv-whisperx (render, indexing, planner); ends by running `doctor`
 powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1
-# Local speech stack (Parakeet + Nemotron) in its own environment
+# Local speech stack .venv-nvidia-speech (Parakeet + Nemotron) and its pinned models
 powershell -ExecutionPolicy Bypass -File scripts\setup_nvidia_speech.ps1 -DownloadModels
+# Optional: pyannote Community-1 runtime, only for DIARIZATION_BACKEND=pyannote (needs HF_TOKEN)
+# powershell -ExecutionPolicy Bypass -File scripts\setup_diarization_env.ps1
 
-Copy-Item .env.example .env
+Copy-Item .env.example .env   # every variable is described in .env.example
 $py = ".\.venv-whisperx\Scripts\python.exe"
 
 & $py -m clipperx.cli doctor                         # check the local runtime (no LLM)
+# setup-face-models only downloads when ALLOW_MODEL_DOWNLOADS=true is set in .env
 & $py -m clipperx.cli setup-face-models              # one-time download of YuNet/SFace
 & $py -m clipperx.cli index-visual VOD.mp4           # local visual index (no LLM)
 & $py -m clipperx.cli transcribe VOD.mp4             # local ASR with word timestamps
