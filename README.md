@@ -177,7 +177,9 @@ ClipperX is developed with [Claude Code](https://claude.com/claude-code) as a da
 
 ## License
 
-Proprietary — All rights reserved. Source code is visible for evaluation purposes only. See [LICENSE](LICENSE).
+ClipperX is licensed under the [Mozilla Public License 2.0](LICENSE). Copyright (c) 2026 AthanWs.
+
+The MPL is a file-level copyleft license: you can use, modify and redistribute ClipperX, but if you distribute a modified version, those modified files must remain under the MPL 2.0 and their source must be made available.
 
 ---
 
